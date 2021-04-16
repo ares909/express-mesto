@@ -3,7 +3,7 @@ const Card = require('../models/card');
 const getCards = (req, res) => {
   Card.find({})
     .then((cards) => res.send(cards))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch(() => res.status(500).send('Произошла ошибка'));
 };
 
 const createCard = (req, res) => {
@@ -11,7 +11,35 @@ const createCard = (req, res) => {
   const owner = req.user._id;
   Card.create({ name, link, owner })
     .then((card) => res.send(card))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        res.status(400).send('Введите корректные данные');
+      } else {
+        res.status(500).send('Произошла ошибка');
+      }
+    });
 };
 
-module.exports = { getCards, createCard };
+const deleteCard = (req, res) => {
+  Card.findOneAndDelete({ _id: req.params.cardId })
+    .then((card) => res.send(card))
+    .catch(() => res.status(500).send('Произошла ошибка'));
+};
+
+const likeCard = (req, res) => Card.findByIdAndUpdate(
+  req.params.cardId,
+  { $addToSet: { likes: req.user._id } },
+  { new: true },
+).then((card) => res.send(card))
+  .catch(() => res.status(500).send('Произошла ошибка'));
+
+const dislikeCard = (req, res) => Card.findByIdAndUpdate(
+  req.params.cardId,
+  { $pull: { likes: req.user._id } },
+  { new: true },
+).then((card) => res.send(card))
+  .catch(() => res.status(500).send('Произошла ошибка'));
+
+module.exports = {
+  getCards, createCard, deleteCard, likeCard, dislikeCard,
+};

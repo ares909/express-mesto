@@ -2,18 +2,10 @@ const User = require('../models/user');
 
 const getUsers = (req, res) => {
   User.find({})
+    // .populate('card')
     .then((users) => res.send(users))
     .catch(() => res.status(500).send('Произошла ошибка'));
 };
-
-// const getUserById = (req, res) => {
-//   User.findOne({ _id: req.params.userId })
-//     .then(() => { if (user) { res.send(user) } else {
-//         res.status(400).send('Пользователь с указанным id не найден');
-//       }
-//     })
-//     .catch(() => res.status(500).send('Произошла ошибка'));
-// };
 
 const getUserById = (req, res) => {
   User.findOne({ _id: req.params.userId })
@@ -21,8 +13,8 @@ const getUserById = (req, res) => {
       res.send(user);
     })
     .catch((err) => {
-      if (err.name === 'CatchError') {
-        res.status(404).send('Пользователь с указанным id не найден');
+      if (err.name === 'CastError') {
+        res.status(404).send('Запрашиваемый пользователь не найден');
       } else {
         res.status(500).send('Произошла ошибка');
       }
@@ -57,6 +49,8 @@ const updateUser = (req, res) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(400).send('Введите корректные данные');
+      } else if (err.name === 'CastError') {
+        res.status(404).send('Запрашиваемый пользователь не найден');
       } else {
         res.status(500).send('Произошла ошибка');
       }
@@ -75,7 +69,15 @@ const updateAvatar = (req, res) => {
       upsert: true,
     },
   ).then((user) => res.send(user))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        res.status(400).send('Введите корректные данные');
+      } else if (err.name === 'CastError') {
+        res.status(404).send('Запрашиваемый пользователь не найден');
+      } else {
+        res.status(500).send('Произошла ошибка');
+      }
+    });
 };
 
 module.exports = {

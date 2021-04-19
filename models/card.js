@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema({
     default: Date.now(),
 
   },
+  __v: {
+    type: Number,
+    select: false,
+  },
 });
 
 module.exports = mongoose.model('card', userSchema);

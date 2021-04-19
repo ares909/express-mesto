@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
     required: true,
 
   },
+
+  __v: {
+    type: Number,
+    select: false,
+  },
 });
 
 module.exports = mongoose.model('user', userSchema);

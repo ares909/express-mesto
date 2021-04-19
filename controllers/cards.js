@@ -22,8 +22,12 @@ const createCard = (req, res) => {
 
 const deleteCard = (req, res) => {
   Card.findOneAndDelete({ _id: req.params.cardId })
-    .then((card) => res.send(card))
-    .catch(() => res.status(500).send('Произошла ошибка'));
+    .then(() => res.send('Карточка удалена'))
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        res.status(404).send('Карточка с указанным _id не найдена');
+      }
+    });
 };
 
 const likeCard = (req, res) => Card.findByIdAndUpdate(
@@ -31,14 +35,26 @@ const likeCard = (req, res) => Card.findByIdAndUpdate(
   { $addToSet: { likes: req.user._id } },
   { new: true },
 ).then((card) => res.send(card))
-  .catch(() => res.status(500).send('Произошла ошибка'));
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      res.status(400).send('Введите корректные данные');
+    } else {
+      res.status(500).send('Произошла ошибка');
+    }
+  });
 
 const dislikeCard = (req, res) => Card.findByIdAndUpdate(
   req.params.cardId,
   { $pull: { likes: req.user._id } },
   { new: true },
 ).then((card) => res.send(card))
-  .catch(() => res.status(500).send('Произошла ошибка'));
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      res.status(400).send('Введите корректные данные');
+    } else {
+      res.status(500).send('Произошла ошибка');
+    }
+  });
 
 module.exports = {
   getCards, createCard, deleteCard, likeCard, dislikeCard,

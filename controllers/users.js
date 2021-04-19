@@ -1,22 +1,25 @@
+const { Error } = require('mongoose');
 const User = require('../models/user');
 
 const getUsers = (req, res) => {
   User.find({})
-    // .populate('card')
     .then((users) => res.send(users))
-    .catch(() => res.status(500).send('Произошла ошибка'));
+    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
 };
 
 const getUserById = (req, res) => {
   User.findOne({ _id: req.params.userId })
+    .orFail(new Error('NotValid'))
     .then((user) => {
       res.send(user);
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(404).send('Запрашиваемый пользователь не найден');
+      if (err.message === 'NotValid') {
+        res.status(404).send({ message: 'Запрашиваемый пользователь не найден' });
+      } else if (err.name === 'ValidationError' || err.name === 'CastError') {
+        res.status(400).send({ message: 'Введите корректные данные' });
       } else {
-        res.status(500).send('Произошла ошибка');
+        res.status(500).send({ message: 'Произошла ошибка' });
       }
     });
 };
@@ -26,10 +29,10 @@ const createUser = (req, res) => {
   User.create({ name, about, avatar })
     .then((user) => res.send(user))
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(400).send('Введите корректные данные');
+      if (err.name === 'ValidationError' || err.name === 'CastError') {
+        res.status(400).send({ message: 'Введите корректные данные' });
       } else {
-        res.status(500).send('Произошла ошибка');
+        res.status(500).send({ message: 'Произошла ошибка' });
       }
     });
 };
@@ -43,16 +46,14 @@ const updateUser = (req, res) => {
     {
       new: true,
       runValidators: true,
-      upsert: true,
+
     },
   ).then((user) => res.send(user))
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(400).send('Введите корректные данные');
-      } else if (err.name === 'CastError') {
-        res.status(404).send('Запрашиваемый пользователь не найден');
+      if (err.name === 'ValidationError' || err.name === 'CastError') {
+        res.status(400).send({ message: 'Введите корректные данные' });
       } else {
-        res.status(500).send('Произошла ошибка');
+        res.status(500).send({ message: 'Произошла ошибка' });
       }
     });
 };
@@ -66,16 +67,14 @@ const updateAvatar = (req, res) => {
     {
       new: true,
       runValidators: true,
-      upsert: true,
+
     },
   ).then((user) => res.send(user))
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(400).send('Введите корректные данные');
-      } else if (err.name === 'CastError') {
-        res.status(404).send('Запрашиваемый пользователь не найден');
+      if (err.name === 'ValidationError' || err.name === 'CastError') {
+        res.status(400).send({ message: 'Введите корректные данные' });
       } else {
-        res.status(500).send('Произошла ошибка');
+        res.status(500).send({ message: 'Произошла ошибка' });
       }
     });
 };

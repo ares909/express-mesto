@@ -23,6 +23,12 @@ const createCard = (req, res) => {
 const deleteCard = (req, res) => {
   Card.findOneAndDelete({ _id: req.params.cardId })
     .orFail(new Error('NotValid'))
+    .then((card) => {
+      if (card.owner._id.toString() !== req.user._id) {
+        res.status(404).send({ message: 'Id не совпадают' });
+      }
+    })
+
     .then(() => res.send({ message: 'Карточка удалена' }))
     .catch((err) => {
       if (err.message === 'NotValid') {

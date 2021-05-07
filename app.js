@@ -22,16 +22,9 @@ mongoose.connect('mongodb://localhost:27017/mestodb2', {
   useCreateIndex: true,
   useFindAndModify: false,
 });
-// app.use((req, res, next) => {
-//   req.user = {
-//     _id: '6077f30ddcccb6614c1c2e8f',
-//   };
-
-//   next();
-// });
 
 app.use('/users', auth, users);
-app.use('/cards', cards);
+app.use('/cards', auth, cards);
 app.use('/signin', login);
 app.use('/signup', createUser);
 

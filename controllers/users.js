@@ -1,41 +1,43 @@
-const { Error } = require('mongoose');
+// const { Error } = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const NotFoundError = require('../errors/notfound');
+const BadRequestError = require('../errors/badrequest');
+const ConflictError = require('../errors/conflict');
+const UnauthorizedError = require('../errors/unauthorized');
 
 const MONGO_DUPLICATE_ERROR_CODE = 11000;
 const SOLT_ROUNDS = 10;
 const { NODE_ENV, JWT_SECRET } = process.env;
 
-const getUsers = (req, res) => {
+const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => res.send(users))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch(next);
 };
 
-const getUserById = (req, res) => {
+const getUserById = (req, res, next) => {
   User.findOne({ _id: req.params.userId })
-    .orFail(new Error('NotValid'))
+    .orFail(() => new NotFoundError('Запрашиваемый пользователь не найден'))
     .then((user) => {
       res.send(user);
     })
     .catch((err) => {
-      if (err.message === 'NotValid') {
-        res.status(404).send({ message: 'Запрашиваемый пользователь не найден' });
-      } else if (err.name === 'ValidationError' || err.name === 'CastError') {
-        res.status(400).send({ message: 'Введите корректные данные' });
+      if (err.name === 'ValidationError' || err.name === 'CastError') {
+        next(new BadRequestError('Введите корректные данные'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next(err);
       }
     });
 };
 
-const createUser = (req, res) => {
+const createUser = (req, res, next) => {
   const {
     email, password, name, about, avatar,
   } = req.body;
   if (!email || !password) {
-    return res.status(400).send({ message: 'Не передан email или пароль' });
+    throw new BadRequestError('Не передан email или пароль');
   }
   bcrypt.hash(req.body.password, SOLT_ROUNDS)
     .then((hash) => User.create({
@@ -44,15 +46,15 @@ const createUser = (req, res) => {
     .then((user) => res.send(user))
     .catch((err) => {
       if (err.code === MONGO_DUPLICATE_ERROR_CODE) {
-        res.status(409).send({ message: 'Пользователь с переданный email уже существует' });
+        next(new ConflictError('Пользователь с переданным email уже существует'));
       } else if (err.name === 'ValidationError' || err.name === 'CastError') {
-        res.status(400).send({ message: 'Введите корректные данные' });
+        next(new BadRequestError('Введите корректные данные'));
       }
-      res.status(500).send({ message: 'Произошла ошибка' });
+      next(err);
     });
 };
 
-const updateUser = (req, res) => {
+const updateUser = (req, res, next) => {
   const { name, about } = req.body;
   User.findByIdAndUpdate(
     { _id: req.user._id },
@@ -66,14 +68,14 @@ const updateUser = (req, res) => {
   ).then((user) => res.send(user))
     .catch((err) => {
       if (err.name === 'ValidationError' || err.name === 'CastError') {
-        res.status(400).send({ message: 'Введите корректные данные' });
+        next(new BadRequestError('Введите корректные данные'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next(err);
       }
     });
 };
 
-const updateAvatar = (req, res) => {
+const updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
   User.findByIdAndUpdate(
     { _id: req.user._id },
@@ -87,14 +89,14 @@ const updateAvatar = (req, res) => {
   ).then((user) => res.send(user))
     .catch((err) => {
       if (err.name === 'ValidationError' || err.name === 'CastError') {
-        res.status(400).send({ message: 'Введите корректные данные' });
+        next(new BadRequestError('Введите корректные данные'));
       } else {
-        res.status(500).send({ message: 'Произошла ошибка' });
+        next(err);
       }
     });
 };
 
-const login = (req, res) => {
+const login = (req, res, next) => {
   const { email, password } = req.body;
 
   return User.findUserByCredentials(email, password)
@@ -108,23 +110,20 @@ const login = (req, res) => {
       });
 
       if (!user) {
-        return Promise.reject(new Error('Неправильные почта или пароль'));
+        throw new UnauthorizedError('Неправильные почта или пароль');
       }
 
       return bcrypt.compare(password, user.password);
     })
     .then((matched) => {
       if (!matched) {
-        // хеши не совпали — отклоняем промис
-        return Promise.reject(new Error('Неправильные почта или пароль'));
+        throw new UnauthorizedError('Неправильные почта или пароль');
       }
 
       // аутентификация успешна
       res.send({ message: 'Вход выполнен' });
     })
-    .catch((err) => {
-      res.status(401).send({ message: 'Неправильные почта или пароль' });
-    });
+    .catch(next(new UnauthorizedError('Неправильные почта или пароль')));
 };
 
 module.exports = {

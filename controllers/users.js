@@ -5,7 +5,6 @@ const User = require('../models/user');
 const NotFoundError = require('../errors/notfound');
 const BadRequestError = require('../errors/badrequest');
 const ConflictError = require('../errors/conflict');
-const UnauthorizedError = require('../errors/unauthorized');
 
 const MONGO_DUPLICATE_ERROR_CODE = 11000;
 const SOLT_ROUNDS = 10;
@@ -43,7 +42,13 @@ const createUser = (req, res, next) => {
     .then((hash) => User.create({
       email, password: hash, name, about, avatar,
     }))
-    .then((user) => res.send(user))
+    .then((user) => res.send({
+      _id: user._id,
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
+      email: user.email,
+    }))
     .catch((err) => {
       if (err.code === MONGO_DUPLICATE_ERROR_CODE) {
         next(new ConflictError('Пользователь с переданным email уже существует'));
@@ -98,7 +103,6 @@ const updateAvatar = (req, res, next) => {
 
 const login = (req, res, next) => {
   const { email, password } = req.body;
-
   return User.findUserByCredentials(email, password)
     .then((user) => {
       const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
@@ -109,21 +113,9 @@ const login = (req, res, next) => {
         sameSite: true,
       });
 
-      if (!user) {
-        throw new UnauthorizedError('Неправильные почта или пароль');
-      }
-
-      return bcrypt.compare(password, user.password);
-    })
-    .then((matched) => {
-      if (!matched) {
-        throw new UnauthorizedError('Неправильные почта или пароль');
-      }
-
-      // аутентификация успешна
       res.send({ message: 'Вход выполнен' });
     })
-    .catch(next(new UnauthorizedError('Неправильные почта или пароль')));
+    .catch(next);
 };
 
 module.exports = {
